@@ -1,6 +1,6 @@
-# newspack-plugin-update-checker
+# Newspack Plugin Update Checker
 
-Newspack doesn't list most of their plugins in the wp.org plugin directory so they need to be updated from GitHub. 
+[Newspack](https://newspack.com) doesn't list most of their plugins in the wp.org plugin directory so they need to be updated from GitHub. 
 
 Fortunately, there's a [plugin updater library](https://github.com/YahnisElsts/plugin-update-checker) that can check for updates and let you know when a new version is available.
 
