@@ -55,6 +55,6 @@ function newspack_plugin_update() {
             // Newspack uses composer to build releases so we need to use the zip file from the latest release instead of the stable branch.
             $my_update_checker->getVcsApi()->enableReleaseAssets();
         }
-	}
+    }
 }
 add_action( 'plugins_loaded', 'newspack_plugin_update' );
