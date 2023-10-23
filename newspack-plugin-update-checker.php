@@ -45,7 +45,7 @@ function newspack_plugin_update() {
         // github repo URL for the plugin
         $github_url = $gh_org . $plugin_slug;
 
-		// check to make sure this particular plugin file exists before we check for updates
+	// check to make sure this particular plugin file exists before we check for updates
         if ( file_exists( $plugin_file ) ) {
             $my_update_checker = PucFactory::buildUpdateChecker(
                 $github_url,
