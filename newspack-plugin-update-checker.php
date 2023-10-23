@@ -10,9 +10,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// load the update checker library https://github.com/YahnisElsts/plugin-update-checker
 require_once 'vendor/plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
+// check for plugin updates from Github for common Newspack plugins
 function newspack_plugin_update() {
 
     // the most commonly used Newspack plugins that are not in the wp.org directory
@@ -31,6 +33,7 @@ function newspack_plugin_update() {
     // the Automattic github org url
     $gh_org = 'https://github.com/Automattic/';
 
+    // loop through the plugins, make sure they exist, run the update checker
 	foreach ( $newspack_plugin_list as $plugin_slug ) {
         if ( $plugin_slug === 'newspack-plugin' ) {
             // the main Newspack plugin uses newspack.php instead of newspack-plugin.php
