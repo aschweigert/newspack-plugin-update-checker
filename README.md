@@ -16,11 +16,25 @@ For the time being this plugin just checks for the most commonly-used Newspack p
 * [Newspack RSS Enhancements](https://github.com/automattic/newspack-rss-enhancements)
 * [Newspack Supporters](https://github.com/automattic/newspack-supporters)
 
+## Installation
+
+You can download the latest release as a zip file from [the releases tab](https://github.com/aschweigert/newspack-plugin-update-checker/releases) here on GitHub.
+
+Rename the file to remove the version number (the file name will become the folder name in your wp-content/plugins directory when WP unzips the file to install it).
+
+Go to the Plugins section of WP Admin, click on "Add New" at the top, upload the zip file, install, activate, and you should be good to go!
+
+You'll know it's working if you see the options to "check for updates" and "enable auto updates" for any of the Newspack plugins you have installed:
+
+![plugin-updater](https://github.com/aschweigert/newspack-plugin-update-checker/assets/490703/dc4af5fa-4753-4b87-8492-bd71357a9809)
+
 ## Some Notes
 
 The plugin assumes you have the plugin(s) in folders named using their respective slugs (e.g. wp-content/plugins/newspack-plugin/). If you initially downloaded the plugin(s) from GitHub they may have had the branch name or release tag appended (e.g. wp-content/plugins/newspack-plugin-master/). You'll need to rename the folder if this is the case.
 
 Newspack uses Composer to build the releases for their plugins so a common gotcha is trying to download the Main (or Release) branch directly. Fortunately, this plugin updater library has the option to grab the zip file of the latest tagged release, so that's what it's using to perform the update (which should work just fine).
+
+While the plugin will allow you to enable auto-updates, I'd recommend keeping an eye on the [Newspack release notes](https://newspack.com/release-notes/) to make sure you're aware of what's in each release and any potentially breaking changes that could affect your site.
 
 ## Questions? Comments?
 
