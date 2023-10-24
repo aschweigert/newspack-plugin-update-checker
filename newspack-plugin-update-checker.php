@@ -7,7 +7,7 @@
  * Author URI: https://mediatoybox.com
  * License: GPL2
  *
- * @package WordPress
+ * @package Newspack-Plugin-Update-Checker
  */
 
 defined( 'ABSPATH' ) || exit;
