@@ -36,6 +36,13 @@ if ( ! function_exists( 'npuc_newspack_plugin_update' ) ) {
 			'newspack-media-partners',
 			'newspack-rss-enhancements',
 			'newspack-supporters',
+			'newspack-network',
+			'newspack-custom-content-migrator',
+			'newspack-content-converter',
+			'newspack-extended-access',
+			'newspack-multibranded-site',
+			'newspack-elections',
+			'newspack-rename-comments',
 		);
 		apply_filters( 'npuc_newspack_plugin_list', $newspack_plugin_list );
 
