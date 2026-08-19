@@ -5,7 +5,7 @@
  * Version:           0.2.0
  * Requires at least: 3.7
  * Requires PHP:      7.4
- * Author:            Media Toybox
+ * Author:            Adam Schweigert, Media Toybox
  * Author URI:        https://mediatoybox.com/
  * License: 	      GPL2
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
