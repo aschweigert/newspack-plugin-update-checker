@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0a1] - 2026-08-19
+## [1.1.0] - 2026-08-19
 
 ### Changed
 
@@ -14,9 +14,9 @@
 - Look up Newspack Sponsors as `newspack-sponsors` instead of the misspelled slug
 - Stop checking plugins that were merged into Newspack or are no longer shipped from GitHub
 
-## [0.1.0] - 2023-10-24
+## [1.0.0] - 2023-10-24
 
 _Initial release._
 
-[0.2.0a1]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.2.0a1
-[0.1.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.1
+[1.1.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v1.1.0
+[1.0.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.1
