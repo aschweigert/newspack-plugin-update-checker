@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       Newspack Plugin Update Checker
- * Description:       Keep tabs on updates to Newspack plugins that are only available on GitHub
- * Version:           0.2.0
+ * Description:       Keep tabs on updates to Newspack plugins and themes that are only available on GitHub
+ * Version:           0.3.0
  * Requires at least: 3.7
  * Requires PHP:      7.4
  * Author:            Adam Schweigert, Media Toybox
@@ -23,6 +23,7 @@ require_once __DIR__ . '/vendor/plugin-update-checker/plugin-update-checker.php'
 require_once __DIR__ . '/includes/class-npuc-github-monorepo-api.php';
 
 use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\PluginUpdateChecker as NPUC_Vcs_Plugin_Update_Checker;
+use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\ThemeUpdateChecker as NPUC_Vcs_Theme_Update_Checker;
 
 // Newspack plugins and themes now ship from this monorepo rather than per-package GitHub repos.
 define( 'NPUC_WORKSPACE_REPO_URL', 'https://github.com/Automattic/newspack-workspace' );
@@ -85,6 +86,43 @@ if ( ! function_exists( 'npuc_get_plugin_tag_prefix' ) ) {
 	}
 }
 
+if ( ! function_exists( 'npuc_get_monitored_theme_slugs' ) ) {
+	/**
+	 * GitHub-only Newspack theme slugs to watch when they are installed.
+	 *
+	 * The parent theme and its five child themes ship together from the
+	 * `newspack-theme@` monorepo release, each as its own zip.
+	 *
+	 * @return array<int, string>
+	 */
+	function npuc_get_monitored_theme_slugs(): array {
+		return array(
+			'newspack-theme',
+			'newspack-joseph',
+			'newspack-katharine',
+			'newspack-nelson',
+			'newspack-sacha',
+			'newspack-scott',
+		);
+	}
+}
+
+if ( ! function_exists( 'npuc_get_github_access_token' ) ) {
+	/**
+	 * Optional GitHub token used to raise the unauthenticated API quota.
+	 *
+	 * @return string|null
+	 */
+	function npuc_get_github_access_token(): ?string {
+		$access_token = apply_filters( 'npuc_github_access_token', '' );
+		if ( ! is_string( $access_token ) || '' === $access_token ) {
+			return null;
+		}
+
+		return $access_token;
+	}
+}
+
 if ( ! function_exists( 'npuc_normalize_monorepo_version' ) ) {
 	/**
 	 * Fall back to the SemVer portion of a `package@version` tag if headers were unavailable.
@@ -118,10 +156,7 @@ if ( ! function_exists( 'npuc_newspack_plugin_update' ) ) {
 			return;
 		}
 
-		$access_token = apply_filters( 'npuc_github_access_token', '' );
-		if ( ! is_string( $access_token ) || '' === $access_token ) {
-			$access_token = null;
-		}
+		$access_token = npuc_get_github_access_token();
 
 		foreach ( $newspack_plugin_list as $plugin_slug ) {
 			if ( ! is_string( $plugin_slug ) || '' === $plugin_slug ) {
@@ -153,3 +188,49 @@ if ( ! function_exists( 'npuc_newspack_plugin_update' ) ) {
 	}
 }
 add_action( 'plugins_loaded', 'npuc_newspack_plugin_update' );
+
+if ( ! function_exists( 'npuc_newspack_theme_update' ) ) {
+	/**
+	 * Loop through the Newspack themes, make sure they exist, run the update checker.
+	 */
+	function npuc_newspack_theme_update(): void {
+		$newspack_theme_list = npuc_get_monitored_theme_slugs();
+		$newspack_theme_list = apply_filters( 'npuc_newspack_theme_list', $newspack_theme_list );
+
+		if ( ! is_array( $newspack_theme_list ) ) {
+			return;
+		}
+
+		$access_token = npuc_get_github_access_token();
+
+		foreach ( $newspack_theme_list as $theme_slug ) {
+			if ( ! is_string( $theme_slug ) || '' === $theme_slug ) {
+				continue;
+			}
+
+			$stylesheet = get_theme_root( $theme_slug ) . '/' . $theme_slug . '/style.css';
+
+			// Check to make sure this particular theme is installed before we check for updates.
+			if ( ! is_readable( $stylesheet ) ) {
+				continue;
+			}
+
+			$github_api = new NPUC_GitHub_Monorepo_Api(
+				NPUC_WORKSPACE_REPO_URL,
+				'newspack-theme@',
+				$theme_slug . '.zip',
+				$access_token,
+				'themes/newspack-theme/' . $theme_slug
+			);
+
+			$npuc_update_checker = new NPUC_Vcs_Theme_Update_Checker(
+				$github_api,
+				$theme_slug,
+				$theme_slug
+			);
+
+			$npuc_update_checker->addResultFilter( 'npuc_normalize_monorepo_version' );
+		}
+	}
+}
+add_action( 'plugins_loaded', 'npuc_newspack_theme_update' );

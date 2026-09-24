@@ -15,10 +15,11 @@ use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\Reference;
 /**
  * Resolves a single Newspack package from the workspace monorepo.
  *
- * Newspack publishes every plugin from one GitHub repository using tags like
- * `newspack-ads@3.14.2` and a matching `{slug}.zip` release asset. Plugin Update
- * Checker's default GitHub client treats the repo as one plugin, so this adapter
- * selects the right tag, zip, and source path for a given package.
+ * Newspack publishes every plugin and theme from one GitHub repository using
+ * tags like `newspack-ads@3.14.2` or `newspack-theme@2.27.0` and matching
+ * `{slug}.zip` release assets. Plugin Update Checker's default GitHub client
+ * treats the repo as one package, so this adapter selects the right tag, zip,
+ * and source path for a given plugin or theme.
  */
 class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 	/**
@@ -29,15 +30,40 @@ class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 	protected string $tag_prefix;
 
 	/**
-	 * @param string      $repository_url GitHub repository URL.
-	 * @param string      $tag_prefix     Package tag prefix, e.g. "newspack-ads@".
-	 * @param string      $asset_filename Release zip filename, e.g. "newspack-ads.zip".
-	 * @param string|null $access_token   Optional GitHub token for a higher API quota.
+	 * Path inside the monorepo to this package (no trailing slash).
+	 *
+	 * Empty means "plugins/{slug}", which matches GitHub-only Newspack plugins.
+	 *
+	 * @var string
 	 */
-	public function __construct( string $repository_url, string $tag_prefix, string $asset_filename, $access_token = null ) {
+	protected string $package_directory;
+
+	/**
+	 * Stable tag names keyed by tag prefix, shared across checkers in one request.
+	 *
+	 * @var array<string, array<int, string>>
+	 */
+	protected static array $stable_tag_cache = array();
+
+	/**
+	 * GitHub release objects keyed by tag name, shared across checkers in one request.
+	 *
+	 * @var array<string, object|\WP_Error>
+	 */
+	protected static array $release_cache = array();
+
+	/**
+	 * @param string      $repository_url     GitHub repository URL.
+	 * @param string      $tag_prefix         Package tag prefix, e.g. "newspack-ads@".
+	 * @param string      $asset_filename     Release zip filename, e.g. "newspack-ads.zip".
+	 * @param string|null $access_token       Optional GitHub token for a higher API quota.
+	 * @param string      $package_directory  Monorepo path to this package, e.g. "themes/newspack-theme/newspack-joseph".
+	 */
+	public function __construct( string $repository_url, string $tag_prefix, string $asset_filename, $access_token = null, string $package_directory = '' ) {
 		parent::__construct( $repository_url, $access_token );
 
-		$this->tag_prefix = $tag_prefix;
+		$this->tag_prefix         = $tag_prefix;
+		$this->package_directory  = trim( $package_directory, '/' );
 
 		// Built install zips are attached as release assets; the git archive is the whole monorepo.
 		$this->enableReleaseAssets(
@@ -67,9 +93,7 @@ class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 	 */
 	public function getLatestRelease() {
 		foreach ( array_slice( $this->npuc_get_stable_tag_names(), 0, 10 ) as $tag_name ) {
-			$release = $this->api(
-				'/repos/:user/:repo/releases/tags/' . rawurlencode( $tag_name )
-			);
+			$release = $this->npuc_get_release_by_tag( $tag_name );
 			if ( is_wp_error( $release ) || ! is_object( $release ) || empty( $release->tag_name ) ) {
 				continue;
 			}
@@ -88,18 +112,55 @@ class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 	}
 
 	/**
-	 * Read plugin files from plugins/{slug}/ in the monorepo instead of the repo root.
+	 * Read package files from their monorepo subdirectory instead of the repo root.
 	 *
-	 * @param string $path File path relative to the plugin directory.
+	 * @param string $path File path relative to the plugin or theme directory.
 	 * @param string $ref  Git ref (tag, branch, or commit).
 	 * @return string|null
 	 */
 	public function getRemoteFile( $path, $ref = 'master' ) {
-		if ( '' !== $this->slug && 0 !== strpos( $path, 'plugins/' ) ) {
-			$path = 'plugins/' . $this->slug . '/' . ltrim( $path, '/' );
+		$directory = $this->npuc_get_package_directory();
+		if ( '' !== $directory && 0 !== strpos( $path, $directory . '/' ) ) {
+			$path = $directory . '/' . ltrim( $path, '/' );
 		}
 
 		return parent::getRemoteFile( $path, $ref );
+	}
+
+	/**
+	 * Resolve the monorepo directory that contains this plugin or theme.
+	 *
+	 * @return string
+	 */
+	protected function npuc_get_package_directory(): string {
+		if ( '' !== $this->package_directory ) {
+			return $this->package_directory;
+		}
+
+		if ( '' === $this->slug ) {
+			return '';
+		}
+
+		return 'plugins/' . $this->slug;
+	}
+
+	/**
+	 * Fetch a GitHub release by tag, reusing the response when several packages share a release.
+	 *
+	 * @param string $tag_name Full git tag name.
+	 * @return object|\WP_Error
+	 */
+	protected function npuc_get_release_by_tag( string $tag_name ) {
+		if ( isset( self::$release_cache[ $tag_name ] ) ) {
+			return self::$release_cache[ $tag_name ];
+		}
+
+		$release = $this->api(
+			'/repos/:user/:repo/releases/tags/' . rawurlencode( $tag_name )
+		);
+		self::$release_cache[ $tag_name ] = $release;
+
+		return $release;
 	}
 
 	/**
@@ -108,10 +169,15 @@ class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 	 * @return array<int, string>
 	 */
 	protected function npuc_get_stable_tag_names(): array {
+		if ( isset( self::$stable_tag_cache[ $this->tag_prefix ] ) ) {
+			return self::$stable_tag_cache[ $this->tag_prefix ];
+		}
+
 		$refs = $this->api(
 			'/repos/:user/:repo/git/matching-refs/tags/' . rawurlencode( $this->tag_prefix )
 		);
 		if ( is_wp_error( $refs ) || ! is_array( $refs ) ) {
+			self::$stable_tag_cache[ $this->tag_prefix ] = array();
 			return array();
 		}
 
@@ -130,6 +196,7 @@ class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 		}
 
 		if ( empty( $versions_by_tag ) ) {
+			self::$stable_tag_cache[ $this->tag_prefix ] = array();
 			return array();
 		}
 
@@ -140,7 +207,10 @@ class NPUC_GitHub_Monorepo_Api extends GitHubApi {
 			}
 		);
 
-		return array_keys( $versions_by_tag );
+		$tag_names = array_keys( $versions_by_tag );
+		self::$stable_tag_cache[ $this->tag_prefix ] = $tag_names;
+
+		return $tag_names;
 	}
 
 	/**

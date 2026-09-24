@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.0] - 2026-09-16
+
+### Added
+
+- Check the Newspack parent theme and its five child themes (Joseph, Katharine, Nelson, Sacha, Scott) when they are installed, using the `newspack-theme@` monorepo release and each theme’s own zip
+
 ## [0.2.0] - 2026-08-19
 
 ### Changed
@@ -18,5 +24,6 @@
 
 _Initial release._
 
+[0.3.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.3.0
 [0.2.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v1.1.0
 [0.1.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.1
