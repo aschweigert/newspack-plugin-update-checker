@@ -30,7 +30,7 @@
 
 _Initial release._
 
-[0.4.0a1]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.4.0a1
+[0.4.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.4.0a1
 [0.3.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.3.0
 [0.2.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v1.1.0
 [0.1.0]: https://github.com/aschweigert/newspack-plugin-update-checker/releases/tag/v0.1
