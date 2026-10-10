@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Newspack Plugin Update Checker
  * Description:       Keep tabs on updates to Newspack plugins and themes that are only available on GitHub
- * Version:           0.4.0a1
+ * Version:           0.4.0
  * Requires at least: 3.7
  * Requires PHP:      7.4
  * Author:            Adam Schweigert, Media Toybox
