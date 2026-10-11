@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Newspack Plugin Update Checker
  * Description:       Keep tabs on updates to Newspack plugins and themes that are only available on GitHub
- * Version:           0.3.0
+ * Version:           0.4.0
  * Requires at least: 3.7
  * Requires PHP:      7.4
  * Author:            Adam Schweigert, Media Toybox
@@ -22,6 +22,7 @@ defined( 'ABSPATH' ) || exit;
 require_once __DIR__ . '/vendor/plugin-update-checker/plugin-update-checker.php';
 require_once __DIR__ . '/includes/class-npuc-github-monorepo-api.php';
 
+use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\GitHubApi as NPUC_GitHub_Api;
 use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\PluginUpdateChecker as NPUC_Vcs_Plugin_Update_Checker;
 use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\ThemeUpdateChecker as NPUC_Vcs_Theme_Update_Checker;
 
@@ -48,6 +49,22 @@ if ( ! function_exists( 'npuc_get_monitored_plugin_slugs' ) ) {
 			'newspack-multibranded-site',
 			'newspack-network',
 			'newspack-story-budget',
+		);
+	}
+}
+
+if ( ! function_exists( 'npuc_get_standalone_plugins' ) ) {
+	/**
+	 * GitHub-only Newspack plugins that still ship from their own repositories.
+	 *
+	 * Each item is slug => repository URL. These cannot use the workspace
+	 * adapter: tags are `vX.Y.Z` and the install zip lives on that repo.
+	 *
+	 * @return array<string, string>
+	 */
+	function npuc_get_standalone_plugins(): array {
+		return array(
+			'newspack-elections' => 'https://github.com/Automattic/newspack-elections',
 		);
 	}
 }
@@ -144,46 +161,98 @@ if ( ! function_exists( 'npuc_normalize_monorepo_version' ) ) {
 	}
 }
 
+if ( ! function_exists( 'npuc_get_installed_plugin_file' ) ) {
+	/**
+	 * Absolute path to a plugin bootstrap file, if that plugin is installed.
+	 *
+	 * @param string $plugin_slug Plugin directory slug.
+	 * @return string|null
+	 */
+	function npuc_get_installed_plugin_file( string $plugin_slug ): ?string {
+		$plugin_file = WP_PLUGIN_DIR . '/' . $plugin_slug . '/' . npuc_get_plugin_bootstrap_file( $plugin_slug );
+
+		return file_exists( $plugin_file ) ? $plugin_file : null;
+	}
+}
+
+if ( ! function_exists( 'npuc_register_plugin_update_checker' ) ) {
+	/**
+	 * Attach Plugin Update Checker to an installed plugin.
+	 *
+	 * @param object $github_api   GitHub API client (workspace adapter or stock GitHub API).
+	 * @param string $plugin_file  Absolute path to the main plugin file.
+	 * @param string $plugin_slug  Plugin directory slug.
+	 * @param bool   $is_workspace Whether versions come from monorepo `package@version` tags.
+	 */
+	function npuc_register_plugin_update_checker( object $github_api, string $plugin_file, string $plugin_slug, bool $is_workspace ): void {
+		$npuc_update_checker = new NPUC_Vcs_Plugin_Update_Checker(
+			$github_api,
+			$plugin_file,
+			$plugin_slug
+		);
+
+		if ( $is_workspace ) {
+			$npuc_update_checker->addResultFilter( 'npuc_normalize_monorepo_version' );
+		}
+	}
+}
+
 if ( ! function_exists( 'npuc_newspack_plugin_update' ) ) {
 	/**
 	 * Loop through the plugins, make sure they exist, run the update checker.
 	 */
 	function npuc_newspack_plugin_update(): void {
+		$access_token = npuc_get_github_access_token();
+
 		$newspack_plugin_list = npuc_get_monitored_plugin_slugs();
 		$newspack_plugin_list = apply_filters( 'npuc_newspack_plugin_list', $newspack_plugin_list );
 
-		if ( ! is_array( $newspack_plugin_list ) ) {
+		if ( is_array( $newspack_plugin_list ) ) {
+			foreach ( $newspack_plugin_list as $plugin_slug ) {
+				if ( ! is_string( $plugin_slug ) || '' === $plugin_slug ) {
+					continue;
+				}
+
+				$plugin_file = npuc_get_installed_plugin_file( $plugin_slug );
+				if ( null === $plugin_file ) {
+					continue;
+				}
+
+				$github_api = new NPUC_GitHub_Monorepo_Api(
+					NPUC_WORKSPACE_REPO_URL,
+					npuc_get_plugin_tag_prefix( $plugin_slug ),
+					$plugin_slug . '.zip',
+					$access_token
+				);
+
+				npuc_register_plugin_update_checker( $github_api, $plugin_file, $plugin_slug, true );
+			}
+		}
+
+		$standalone_plugins = npuc_get_standalone_plugins();
+		$standalone_plugins = apply_filters( 'npuc_standalone_plugin_list', $standalone_plugins );
+
+		if ( ! is_array( $standalone_plugins ) ) {
 			return;
 		}
 
-		$access_token = npuc_get_github_access_token();
-
-		foreach ( $newspack_plugin_list as $plugin_slug ) {
-			if ( ! is_string( $plugin_slug ) || '' === $plugin_slug ) {
+		foreach ( $standalone_plugins as $plugin_slug => $repo_url ) {
+			if ( ! is_string( $plugin_slug ) || '' === $plugin_slug || ! is_string( $repo_url ) || '' === $repo_url ) {
 				continue;
 			}
 
-			$plugin_file = WP_PLUGIN_DIR . '/' . $plugin_slug . '/' . npuc_get_plugin_bootstrap_file( $plugin_slug );
-
-			// Check to make sure this particular plugin file exists before we check for updates.
-			if ( ! file_exists( $plugin_file ) ) {
+			$plugin_file = npuc_get_installed_plugin_file( $plugin_slug );
+			if ( null === $plugin_file ) {
 				continue;
 			}
 
-			$github_api = new NPUC_GitHub_Monorepo_Api(
-				NPUC_WORKSPACE_REPO_URL,
-				npuc_get_plugin_tag_prefix( $plugin_slug ),
-				$plugin_slug . '.zip',
-				$access_token
+			$github_api = new NPUC_GitHub_Api( $repo_url, $access_token );
+			$github_api->enableReleaseAssets(
+				'/^' . preg_quote( $plugin_slug, '/' ) . '-.*\\.zip$/',
+				NPUC_GitHub_Api::REQUIRE_RELEASE_ASSETS
 			);
 
-			$npuc_update_checker = new NPUC_Vcs_Plugin_Update_Checker(
-				$github_api,
-				$plugin_file,
-				$plugin_slug
-			);
-
-			$npuc_update_checker->addResultFilter( 'npuc_normalize_monorepo_version' );
+			npuc_register_plugin_update_checker( $github_api, $plugin_file, $plugin_slug, false );
 		}
 	}
 }
