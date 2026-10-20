@@ -7,7 +7,7 @@
  * Requires PHP:      7.4
  * Author:            Adam Schweigert, Media Toybox
  * Author URI:        https://mediatoybox.com/
- * License: 	      GPL2
+ * License:           GPL2
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       newspack-plugin-update-checker
  *
@@ -22,11 +22,15 @@ defined( 'ABSPATH' ) || exit;
 require_once __DIR__ . '/vendor/plugin-update-checker/plugin-update-checker.php';
 require_once __DIR__ . '/includes/class-npuc-github-monorepo-api.php';
 
+use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\GitHubApi as NPUC_GitHub_Api;
 use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\PluginUpdateChecker as NPUC_Vcs_Plugin_Update_Checker;
 use YahnisElsts\PluginUpdateChecker\v5p2\Vcs\ThemeUpdateChecker as NPUC_Vcs_Theme_Update_Checker;
 
 // Newspack plugins and themes now ship from this monorepo rather than per-package GitHub repos.
 define( 'NPUC_WORKSPACE_REPO_URL', 'https://github.com/Automattic/newspack-workspace' );
+
+// This plugin's own releases, used so sites can update the update checker itself.
+define( 'NPUC_SELF_REPO_URL', 'https://github.com/aschweigert/newspack-plugin-update-checker' );
 
 if ( ! function_exists( 'npuc_get_monitored_plugin_slugs' ) ) {
 	/**
@@ -234,3 +238,26 @@ if ( ! function_exists( 'npuc_newspack_theme_update' ) ) {
 	}
 }
 add_action( 'plugins_loaded', 'npuc_newspack_theme_update' );
+
+if ( ! function_exists( 'npuc_self_update' ) ) {
+	/**
+	 * Check this plugin's own GitHub releases so sites get new versions from WP Admin.
+	 *
+	 * Releases have no attached zip, so PUC installs the release source zip and
+	 * renames the extracted folder back to this plugin's directory.
+	 */
+	function npuc_self_update(): void {
+		if ( ! apply_filters( 'npuc_enable_self_update', true ) ) {
+			return;
+		}
+
+		$github_api = new NPUC_GitHub_Api( NPUC_SELF_REPO_URL, npuc_get_github_access_token() );
+
+		new NPUC_Vcs_Plugin_Update_Checker(
+			$github_api,
+			__FILE__,
+			'newspack-plugin-update-checker'
+		);
+	}
+}
+add_action( 'plugins_loaded', 'npuc_self_update' );
