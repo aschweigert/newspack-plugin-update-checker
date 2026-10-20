@@ -37,6 +37,14 @@ You'll know it's working if you see the options to "check for updates" and "enab
 
 ![plugin-updater](https://github.com/aschweigert/newspack-plugin-update-checker/assets/490703/dc4af5fa-4753-4b87-8492-bd71357a9809)
 
+### Updating this plugin
+
+Starting with the release after 0.3.0, the plugin also checks [its own releases](https://github.com/aschweigert/newspack-plugin-update-checker/releases) here on GitHub, so future versions show up in WP Admin like any other plugin update (auto-updates included). You only need to rename the folder for the first install; updates keep the existing folder name.
+
+If you're on 0.3.0 or earlier, your copy can't check for its own updates. Download and install the latest release once by hand (upload the zip and choose "Replace current with uploaded"), and it will keep itself up to date from then on.
+
+To turn self-updates off (for example, if you deploy this plugin with Composer or Git), add `add_filter( 'npuc_enable_self_update', '__return_false' );` to a must-use plugin or your theme.
+
 ## Some Notes
 
 The plugin assumes you have the plugin(s) and theme(s) in folders named using their respective slugs (e.g. wp-content/plugins/newspack-plugin/, wp-content/themes/newspack-theme/). If you initially downloaded them from GitHub they may have had the branch name or release tag appended (e.g. wp-content/plugins/newspack-plugin-master/). You'll need to rename the folder if this is the case.

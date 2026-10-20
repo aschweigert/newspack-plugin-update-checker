@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Check this plugin's own [GitHub releases](https://github.com/aschweigert/newspack-plugin-update-checker/releases) so new versions can be installed from WP Admin, with an `npuc_enable_self_update` filter to turn it off
+
 ## [0.3.0] - 2026-09-16
 
 ### Added
